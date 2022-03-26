@@ -1,0 +1,6 @@
+.terraform/
+.terraform.lock.hcl
+DataServerRunUp.sh
+RunUp.sh
+terraform.tfstate
+terraform.tfstate.backup    ~
