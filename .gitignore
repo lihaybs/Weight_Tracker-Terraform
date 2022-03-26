@@ -3,4 +3,5 @@
 DataServerRunUp.sh
 RunUp.sh
 terraform.tfstate
-terraform.tfstate.backup    ~
+terraform.tfstate.backup    
+terraform.tfstate
