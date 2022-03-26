@@ -1,6 +1,6 @@
 # Create  a Resource Group
 resource "azurerm_resource_group" "RG" {
-  name     = "Week_5_terraform"
+  name     = var.resource_group_name
   location = var.location
 }
 /*_______________________________________________________*/
@@ -183,8 +183,8 @@ resource "azurerm_linux_virtual_machine" "PgDataServer" {
   resource_group_name             = azurerm_resource_group.RG.name
   location                        = azurerm_resource_group.RG.location
   size                            = "Standard_F2"
-  admin_username                  = "adminuser"
-  admin_password                  = "Hakolzorem2022"
+  admin_username                  = var.admin_user
+  admin_password                  = var.admin_password
   disable_password_authentication = false
   network_interface_ids = [
     azurerm_network_interface.PgDataServer.id,
@@ -216,8 +216,8 @@ resource "azurerm_linux_virtual_machine_scale_set" "AppScaleSet" {
   location                        = azurerm_resource_group.RG.location
   sku                             = "Standard_F2"
   instances                       = 2
-  admin_username                  = "adminuser"
-  admin_password                  = "Hakolzorem2022"
+  admin_username                  = var.admin_user
+  admin_password                  = var.admin_password
   disable_password_authentication = false
   upgrade_mode                    = "Automatic"
 
