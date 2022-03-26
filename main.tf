@@ -1,62 +1,42 @@
-
-/*----------------------------------------------------------------------------------------*/
-
-/*----------------------------------------------------------------------------------------*/
+# Create  a Resource Group
 resource "azurerm_resource_group" "RG" {
-  name     = "Week5ProjectNet"
+  name     = "Week_5_terraform"
   location = var.location
 }
-/*----------------------------------------------------------------------------------------*/
-
-/*----------------------------------------------------------------------------------------*/
+/*_______________________________________________________*/
 # Create a virtual network
-/*----------------------------------------------------------------------------------------*/
 resource "azurerm_virtual_network" "vnet" {
   name                = "${var.prefix.VnetName}-Net"
   address_space       = var.address_space
   location            = azurerm_resource_group.RG.location
   resource_group_name = azurerm_resource_group.RG.name
 }
-/*----------------------------------------------------------------------------------------*/
-
-/*----------------------------------------------------------------------------------------*/
-# Creat a subnet for the data base
-/*----------------------------------------------------------------------------------------*/
+/*_______________________________________________________*/
+# Creat a subnet for the Data base
 resource "azurerm_subnet" "Data_Tier" {
   name                 = "Data_Tier"
   resource_group_name  = azurerm_resource_group.RG.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.30.2.0/24"]
 }
-/*----------------------------------------------------------------------------------------*/
-
-/*----------------------------------------------------------------------------------------*/
-
-/*----------------------------------------------------------------------------------------*/
+/*_______________________________________________________*/
+# Create a subnet for Bastion
 resource "azurerm_subnet" "AzureBastionSubnet" {
   name                 = "AzureBastionSubnet"
   resource_group_name  = azurerm_resource_group.RG.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.30.3.0/24"]
 }
-/*----------------------------------------------------------------------------------------*/
-
-/*----------------------------------------------------------------------------------------*/
-# Creat a subnet for the app servers
-/*----------------------------------------------------------------------------------------*/
+/*_______________________________________________________*/
+# Creat a subnet for the App servers
 resource "azurerm_subnet" "Web_Tier" {
   name                 = "Web_Tier"
   resource_group_name  = azurerm_resource_group.RG.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.30.1.0/24"]
-  # sku                 = "Standard"
-
 }
-/*----------------------------------------------------------------------------------------*/
-
-/*----------------------------------------------------------------------------------------*/
-# Azure Public Ip for Load Balancer
-/*----------------------------------------------------------------------------------------*/
+/*_______________________________________________________*/
+# Create a  Public Ip for Load Balancer
 resource "azurerm_public_ip" "LoadBalacerPublicIp" {
   name                = "LoadBalacerPublicIp"
   resource_group_name = azurerm_resource_group.RG.name
@@ -64,27 +44,21 @@ resource "azurerm_public_ip" "LoadBalacerPublicIp" {
   allocation_method   = "Static"
   sku                 = "Standard"
 }
-/*----------------------------------------------------------------------------------------*/
-
-
-
-
-/*----------------------------------------------------------------------------------------*/
+/*_______________________________________________________*/
 # A NETWORK SECURITY GROUP PLUS AN ASSOSIATION TO THE WEB TIER SUBNET 
 # this network security group will have the azure standard plus an openning of port 8080 
 #  to startlistaning for app request 
-/*----------------------------------------------------------------------------------------*/
-resource "azurerm_subnet_network_security_group_association" "NSG1" {
-  subnet_id                 = azurerm_subnet.Web_Tier.id
-  network_security_group_id = azurerm_network_security_group.NSG1.id
-}
+/*_______________________________________________________*/
 
+# Create a NSG for Web_Tier
 resource "azurerm_network_security_group" "NSG1" {
   name                = "NSG1"
   location            = azurerm_resource_group.RG.location
   resource_group_name = azurerm_resource_group.RG.name
-
-
+}
+resource "azurerm_subnet_network_security_group_association" "NSG1" {
+  subnet_id                 = azurerm_subnet.Web_Tier.id
+  network_security_group_id = azurerm_network_security_group.NSG1.id
 }
 resource "azurerm_network_security_rule" "Allow_8080" {
   name                        = "test123"
@@ -99,32 +73,25 @@ resource "azurerm_network_security_rule" "Allow_8080" {
   resource_group_name         = azurerm_resource_group.RG.name
   network_security_group_name = azurerm_network_security_group.NSG1.name
 }
-
-/*----------------------------------------------------------------------------------------*/
-
-
-/*----------------------------------------------------------------------------------------*/
+/*_______________________________________________________*/
 /* A NETWORK SECURITY GROUP PLUS AN ASSOSIATION TO THE DATA TIER SUBNET                   */
-/*----------------------------------------------------------------------------------------*/
-resource "azurerm_subnet_network_security_group_association" "NSG2_association" {
-  subnet_id                 = azurerm_subnet.Data_Tier.id
-  network_security_group_id = azurerm_network_security_group.NSG2.id
-}
-/* BECAUSE WE WANT THE DATA TIER TO REMAINE "HIDDEN" TO OUTSIDE EYES WE CAN LEAVE THE STANDARD  */
-/* AZURE NSG BLOCK THAT ALLOWS ONLY INSIDE NETWORK COMUNICATIONS                                */
+/*_______________________________________________________*/
+# Create a NSG for Data base
 resource "azurerm_network_security_group" "NSG2" {
   name                = "NSG2"
   location            = azurerm_resource_group.RG.location
   resource_group_name = azurerm_resource_group.RG.name
-
-
 }
-/*----------------------------------------------------------------------------------------*/
+resource "azurerm_subnet_network_security_group_association" "NSG2_association" {
+  subnet_id                 = azurerm_subnet.Data_Tier.id
+  network_security_group_id = azurerm_network_security_group.NSG2.id
+}
+/*_______________________________________________________*/
+/* BECAUSE WE WANT THE DATA TIER TO REMAINE "HIDDEN" TO OUTSIDE EYES WE CAN LEAVE THE STANDARD  */
+/* AZURE NSG BLOCK THAT ALLOWS ONLY INSIDE NETWORK COMUNICATIONS                                */
+/*_______________________________________________________*/
 
-
-/*----------------------------------------------------------------------------------------*/
-# SIMPLE LOAD BALANCER BLOCK
-/*----------------------------------------------------------------------------------------*/
+# Create a LoadBalacer
 resource "azurerm_lb" "App-LoadBalacer" {
   name                = "App-LoadBalacer"
   location            = azurerm_resource_group.RG.location
@@ -135,10 +102,8 @@ resource "azurerm_lb" "App-LoadBalacer" {
     name                 = "frontend-ip"
     public_ip_address_id = azurerm_public_ip.LoadBalacerPublicIp.id
   }
-
-
 }
-/*----------------------------------------------------------------------------------------*/
+/*_______________________________________________________*/
 
 
 
@@ -154,36 +119,11 @@ resource "azurerm_lb_rule" "AcceseRole" {
   backend_address_pool_ids       = [azurerm_lb_backend_address_pool.AppScaleSet.id]
   probe_id                       = azurerm_lb_probe.Helthprobe.id
 }
+/*_______________________________________________________*/
 
-# /*Configuring nat rule for RDP connection to the backend pool through the load balancer*/
-# resource "azurerm_lb_nat_rule" "SSH_Access" {
-#   resource_group_name            = azurerm_resource_group.RG.name
-#   loadbalancer_id                = azurerm_lb.App-LoadBalacer.id
-#   name                           = "SSH_Access"
-#   protocol                       = "Tcp"
-#   frontend_port                  = 22
-#   backend_port                   = 22
-#   frontend_ip_configuration_name = "frontend-ip"
+# Create a Backend pool for the LoadBalacer
 
-# }
-
-
-# resource "azurerm_lb_outbound_rule" "OutboundRule" {
-#   resource_group_name     = azurerm_resource_group.RG.name
-#   loadbalancer_id         = azurerm_lb.App-LoadBalacer.id
-#   name                    = "OutboundRule"
-#   protocol                = "Tcp"
-#   backend_address_pool_id = azurerm_lb_backend_address_pool.AppServerPool.id
-
-#   frontend_ip_configuration {
-#     name = "frontend-ip"
-#   }
-# }
-
-/*----------------------------------------------------------------------------------------*/
-#CREATING BACKEND POOL's FOR THE LOAD BALANCER
-/*----------------------------------------------------------------------------------------*/
-#Poll for Scale set "elastic" infrastracture
+# Poll for Scale set "elastic" infrastracture
 resource "azurerm_lb_backend_address_pool" "AppScaleSet" {
   loadbalancer_id = azurerm_lb.App-LoadBalacer.id
   name            = "AppScaleSet"
@@ -191,61 +131,17 @@ resource "azurerm_lb_backend_address_pool" "AppScaleSet" {
     azurerm_lb.App-LoadBalacer
   ]
 }
-
-#Pool for three vm's inferstracture
-
-# resource "azurerm_lb_backend_address_pool" "AppServerPool" {
-#   loadbalancer_id = azurerm_lb.App-LoadBalacer.id
-#   name            = "AppServerPool"
-#   depends_on = [
-#     azurerm_lb.App-LoadBalacer
-#   ]
-# }
-/*----------------------------------------------------------------------------------------*/
-
-
-/*----------------------------------------------------------------------------------------*/
-# #Adding vm's to the backend pool
-/*----------------------------------------------------------------------------------------*/
-# resource "azurerm_lb_backend_address_pool_address" "AppServer1" {
-#   name                    = "AppServer1"
-#   backend_address_pool_id = azurerm_lb_backend_address_pool.AppServerPool.id
-#   virtual_network_id      = azurerm_virtual_network.vnet.id
-#   ip_address              = azurerm_network_interface.webAppNetInterface1.private_ip_address
-# }
-# resource "azurerm_lb_backend_address_pool_address" "AppServer2" {
-#   name                    = "AppServer2"
-#   backend_address_pool_id = azurerm_lb_backend_address_pool.AppServerPool.id
-#   virtual_network_id      = azurerm_virtual_network.vnet.id
-#   ip_address              = azurerm_network_interface.webAppNetInterface2.private_ip_address
-# }
-# resource "azurerm_lb_backend_address_pool_address" "AppServer3" {
-#   name                    = "AppServer3"
-#   backend_address_pool_id = azurerm_lb_backend_address_pool.AppServerPool.id
-#   virtual_network_id      = azurerm_virtual_network.vnet.id
-#   ip_address              = azurerm_network_interface.webAppNetInterface3.private_ip_address
-
-# }
-/*-------------------------------------------------------------------------------------------------*/
-
-
-/*----------------------------------------------------------------------------------------*/
-#PROBE BLOCK REQUIRED FOR THE OPERATION OF LOAD BALNCER
-/*----------------------------------------------------------------------------------------*/
+/*_______________________________________________________*/
+# Probe block required for the operation of LoadBalacer
 resource "azurerm_lb_probe" "Helthprobe" {
   resource_group_name = azurerm_resource_group.RG.name
   loadbalancer_id     = azurerm_lb.App-LoadBalacer.id
   name                = "Helthprobe"
   port                = 8080
 }
-/*----------------------------------------------------------------------------------------*/
-
-
-
-/*----------------------------------------------------------------------------------------*/
-#BASTION SERVER BLOCK
-#PROVIDING A SECURE WAY INTO OUR VIRTUAL NETWORK TO REACH THE VM'S AND DATA SERVERS
-/*----------------------------------------------------------------------------------------*/
+/*_______________________________________________________*/
+# BASTION SERVER BLOCK
+# Creat a Public IP Bastion
 resource "azurerm_public_ip" "BastionPublicIp" {
   name                = "BastionPublicIp"
   location            = azurerm_resource_group.RG.location
@@ -265,11 +161,8 @@ resource "azurerm_bastion_host" "BastionServer" {
     public_ip_address_id = azurerm_public_ip.BastionPublicIp.id
   }
 }
-/*----------------------------------------------------------------------------------------*/
-
-/*----------------------------------------------------------------------------------------*/
-#NETWORK INTERFACES FOR THE POSTGRES DATA SERVER
-/*----------------------------------------------------------------------------------------*/
+/*_______________________________________________________*/
+# Create a Network Interface
 resource "azurerm_network_interface" "PgDataServer" {
   name                = "PgDataServer-nic"
   location            = azurerm_resource_group.RG.location
@@ -282,33 +175,25 @@ resource "azurerm_network_interface" "PgDataServer" {
 
   }
 }
-/*----------------------------------------------------------------------------------------*/
+/*_______________________________________________________*/
 
-
-/*----------------------------------------------------------------------------------------*/
-#THIS IS A LINUX VIRTUAL MACHINE FOR THE DATA BASE IT HAS SOME SPACIEL FUNCTIONALITYS 
-#THAT ARE EXPLAIND IN DETAILE INSIDE THE BLOCK
-/*----------------------------------------------------------------------------------------*/
+# Create Linux VM for DB 
 resource "azurerm_linux_virtual_machine" "PgDataServer" {
-  name                = "${var.prefix.PgDataServerName}-vm"
-  resource_group_name = azurerm_resource_group.RG.name
-  location            = azurerm_resource_group.RG.location
-  size                = "Standard_F2"
-  /*---------required section choosing-----*/
-  /*  to connect via user name and password  */
-  /*--instead of the usuale ssh safer mathod----*/
+  name                            = "${var.prefix.PgDataServerName}-vm"
+  resource_group_name             = azurerm_resource_group.RG.name
+  location                        = azurerm_resource_group.RG.location
+  size                            = "Standard_F2"
   admin_username                  = "adminuser"
   admin_password                  = "Hakolzorem2022"
   disable_password_authentication = false
-  /*------------------------------------------------------*/
   network_interface_ids = [
     azurerm_network_interface.PgDataServer.id,
   ]
 
-  /*---------------------------------------*/
+  /*_______________________________________________________*/
   # this line run's a script with command line 
   #  that configurate the postgres server
-  /*---------------------------------------*/
+  /*_______________________________________________________*/
   custom_data = filebase64("DataServerRunUp.sh")
 
   os_disk {
@@ -323,27 +208,18 @@ resource "azurerm_linux_virtual_machine" "PgDataServer" {
     version   = "latest"
   }
 }
-/*----------------------------------------------------------------------------------------*/
-
-/*----------------------------------------------------------------------------------------*/
-# THIS IS A LINUX MACHINE SCALE SET FOR THE ELASTIC SOLUTION AGAIN THERE ARE SPECIEL FETURE'S
-# THAT ARE DIFFERNT FROM THE MINIMUM STANDARD REQUIRMENTS AND THAT ARE CUSTOMED TO OUR NEEDS
-/*----------------------------------------------------------------------------------------*/
+/*_______________________________________________________*/
+# Create a Linux VMSS for Web
 resource "azurerm_linux_virtual_machine_scale_set" "AppScaleSet" {
-  name                = "AppScaleSet"
-  resource_group_name = azurerm_resource_group.RG.name
-  location            = azurerm_resource_group.RG.location
-  sku                 = "Standard_F2"
-  instances           = 2
-  /*---------required section choosing-----*/
-  /*  to connect via user name and password  */
-  /*--instead of the usuale ssh safer mathod----*/
+  name                            = "AppScaleSet"
+  resource_group_name             = azurerm_resource_group.RG.name
+  location                        = azurerm_resource_group.RG.location
+  sku                             = "Standard_F2"
+  instances                       = 2
   admin_username                  = "adminuser"
   admin_password                  = "Hakolzorem2022"
   disable_password_authentication = false
-  /*---------------------------------------------*/
-  upgrade_mode = "Automatic"
-
+  upgrade_mode                    = "Automatic"
 
   /*---------------------------------------*/
   # this line run's a script with command line 
@@ -351,7 +227,6 @@ resource "azurerm_linux_virtual_machine_scale_set" "AppScaleSet" {
   #              when created 
   /*---------------------------------------*/
   custom_data = filebase64("RunUp.sh")
-
 
   source_image_reference {
     publisher = "Canonical"
@@ -374,8 +249,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "AppScaleSet" {
       primary   = true
       subnet_id = azurerm_subnet.Web_Tier.id
 
-      /*  this line connects the scaile set to a backend pool      */
-      /*  of the load balancer we want to hanlde th...well load :) */
+      /*  this line connects the scale set to a backend pool      */
       load_balancer_backend_address_pool_ids = [azurerm_lb_backend_address_pool.AppScaleSet.id]
       #TODO: להוסיף את היכולת לגדול לפי הצורך
     }
@@ -383,7 +257,4 @@ resource "azurerm_linux_virtual_machine_scale_set" "AppScaleSet" {
   # lifecycle { 
   #   ignore_changes = ["instances"]
   # }
-
-
 }
-/*----------------------------------------------------------------------------------------*/
